@@ -1853,14 +1853,71 @@ function buildPlainBookText(){
 
 function exportTxt(){
   const chapters = getChaptersForExport();
+
   if (!chapters.length) {
     alert("No hay capítulos para exportar.");
     return;
   }
 
-  const text = buildPlainBookText();
-  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
-  downloadBlob(blob, `${safeFileName(PROJECT_BIBLE.bookTitle)}.txt`);
+  const maxWordsPerFile = 45000; // Puedes cambiarlo: 30000, 40000, 50000...
+
+  const title = PROJECT_BIBLE.bookTitle || "Libro";
+  const fileBase = safeFileName(title);
+
+  let part = 1;
+  let currentText = `${title}\n\nPARTE ${part}\n\n`;
+  let currentWords = wordCount(currentText);
+
+  function downloadCurrentPart(){
+    const blob = new Blob([currentText.trim()], { type: "text/plain;charset=utf-8" });
+    downloadBlob(blob, `${fileBase}_parte_${part}.txt`);
+  }
+
+  STORY_BLOCKS.forEach(block => {
+    const blockChapters = block.chapters
+      .map(n => state.chapters[n])
+      .filter(ch => ch && (ch.text || ch.synopsis));
+
+    if (!blockChapters.length) return;
+
+    let blockHeader = `\n\n${block.title}\n`;
+    if (block.subtitle) blockHeader += `${block.subtitle}\n`;
+    blockHeader += `\n`;
+
+    blockChapters.forEach(ch => {
+      let chapterText = "";
+
+      chapterText += `${blockHeader}`;
+      blockHeader = ""; // Solo se añade una vez al primer capítulo del bloque
+
+      chapterText += `${ch.title || `Capítulo ${ch.number}`}\n\n`;
+
+      if (ch.text && ch.text.trim()) {
+        chapterText += `${ch.text.trim()}\n\n`;
+      } else if (ch.synopsis && ch.synopsis.trim()) {
+        chapterText += `[Sin texto completo. Sinopsis del capítulo]\n\n${ch.synopsis.trim()}\n\n`;
+      }
+
+      chapterText += `\n----------------------------------------\n\n`;
+
+      const chapterWords = wordCount(chapterText);
+
+      if (currentWords + chapterWords > maxWordsPerFile && currentWords > 1000) {
+        downloadCurrentPart();
+
+        part++;
+        currentText = `${title}\n\nPARTE ${part}\n\n`;
+        currentWords = wordCount(currentText);
+      }
+
+      currentText += chapterText;
+      currentWords += chapterWords;
+    });
+  });
+
+  if (currentText.trim()) {
+    downloadCurrentPart();
+  }
 }
 
 function buildHtmlBookDocument(){
