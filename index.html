@@ -503,7 +503,7 @@
   <button class="secondary" onclick="exportData()">Exportar copia</button>
   <button class="secondary" onclick="triggerImportData()">Importar copia</button>
   <button class="secondary" onclick="exportTxt()">Exportar TXT</button>
-    <button class="secondary" onclick="exportTxtByChapters()">Exportar TXT por capítulos</button>
+    <button class="secondary" onclick="exportTxtChaptersZip()">Exportar capítulos ZIP</button>
   <button class="secondary" onclick="exportHtmlBook()">Exportar HTML libro</button>
   <button class="secondary" onclick="exportDocx()">Exportar DOCX</button>
   <button class="secondary" onclick="exportEpub()">Exportar EPUB</button>
@@ -1919,6 +1919,54 @@ function exportTxt(){
   if (currentText.trim()) {
     downloadCurrentPart();
   }
+}
+
+    async function exportTxtChaptersZip(){
+  const chapters = getChaptersForExport();
+
+  if (!chapters.length) {
+    alert("No hay capítulos para exportar.");
+    return;
+  }
+
+  if (typeof JSZip === "undefined") {
+    alert("No se ha cargado JSZip.");
+    return;
+  }
+
+  const title = PROJECT_BIBLE.bookTitle || "Libro";
+  const fileBase = safeFileName(title);
+
+  const zip = new JSZip();
+
+  chapters.forEach(ch => {
+    let text = "";
+
+    text += `${title}\n\n`;
+    text += `${ch.title || `Capítulo ${ch.number}`}\n\n`;
+
+    if (ch.text && ch.text.trim()) {
+      text += ch.text.trim();
+    } else if (ch.synopsis && ch.synopsis.trim()) {
+      text += `[Sin texto completo. Sinopsis del capítulo]\n\n`;
+      text += ch.synopsis.trim();
+    }
+
+    text += `\n\n[FIN DEL CAPÍTULO ${ch.number}]`;
+
+    const fileName = `${String(ch.number).padStart(2, "0")}_${safeFileName(ch.title || `capitulo_${ch.number}`)}.txt`;
+
+    zip.file(fileName, text);
+  });
+
+  const blob = await zip.generateAsync({
+    type: "blob",
+    mimeType: "application/zip"
+  });
+
+  downloadBlob(blob, `${fileBase}_capitulos_txt.zip`);
+
+  alert(`Se han exportado ${chapters.length} capítulos dentro de un ZIP.`);
 }
 
     function exportTxtByChapters(){
