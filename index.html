@@ -503,6 +503,7 @@
   <button class="secondary" onclick="exportData()">Exportar copia</button>
   <button class="secondary" onclick="triggerImportData()">Importar copia</button>
   <button class="secondary" onclick="exportTxt()">Exportar TXT</button>
+    <button class="secondary" onclick="exportTxtByChapters()">Exportar TXT por capítulos</button>
   <button class="secondary" onclick="exportHtmlBook()">Exportar HTML libro</button>
   <button class="secondary" onclick="exportDocx()">Exportar DOCX</button>
   <button class="secondary" onclick="exportEpub()">Exportar EPUB</button>
@@ -1859,7 +1860,7 @@ function exportTxt(){
     return;
   }
 
-  const maxWordsPerFile = 10000; // Puedes cambiarlo: 30000, 40000, 50000...
+  const maxWordsPerFile = 1000000; // Puedes cambiarlo: 30000, 40000, 50000...
 
   const title = PROJECT_BIBLE.bookTitle || "Libro";
   const fileBase = safeFileName(title);
@@ -1918,6 +1919,40 @@ function exportTxt(){
   if (currentText.trim()) {
     downloadCurrentPart();
   }
+}
+
+    function exportTxtByChapters(){
+  const chapters = getChaptersForExport();
+
+  if (!chapters.length) {
+    alert("No hay capítulos para exportar.");
+    return;
+  }
+
+  chapters.forEach(ch => {
+    const title = PROJECT_BIBLE.bookTitle || "Libro";
+
+    let text = "";
+
+    text += `${title}\n\n`;
+    text += `${ch.title || `Capítulo ${ch.number}`}\n\n`;
+
+    if (ch.text && ch.text.trim()) {
+      text += ch.text.trim();
+    } else if (ch.synopsis && ch.synopsis.trim()) {
+      text += `[Sin texto completo. Sinopsis del capítulo]\n\n`;
+      text += ch.synopsis.trim();
+    }
+
+    text += `\n\n[FIN DEL CAPÍTULO ${ch.number}]`;
+
+    const fileName = `${String(ch.number).padStart(2, "0")}_${safeFileName(ch.title || `capitulo_${ch.number}`)}.txt`;
+
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    downloadBlob(blob, fileName);
+  });
+
+  alert(`Se han exportado ${chapters.length} capítulos en TXT.`);
 }
 
 function buildHtmlBookDocument(){
